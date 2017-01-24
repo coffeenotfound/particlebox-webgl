@@ -23,53 +23,141 @@
 	
 	<!-- shaders -->
 	<script id="shader-particle-draw-vert" type="shader/glsl-vert">
+		precision highp float;
+		
 		uniform sampler2D uTexParticleData;
 		
 		uniform mat4 uMatMVP;
 		uniform float uParticleSize;
-		uniform int uParticlePageWidth;
+		uniform vec2 uParticlePageSize;
 		
-		attribute int inVertexID; // stupid webgl doesn't have gl_VertexID eventhough every gpu ever created supports it *sigh*
+		uniform vec4 uParticleColor;
+		
+		attribute float inVertexID; // stupid webgl doesn't have gl_VertexID eventhough every gpu ever created supports it *sigh*
+		
+		varying vec4 vMomentumColor;
 		
 		void main() {
 			gl_PointSize = uParticleSize;
 			
+			// calc data page pos
+			vec2 particleDataPos = vec2(mod(inVertexID, uParticlePageSize.x), floor(inVertexID / uParticlePageSize.x));
+			particleDataPos /= uParticlePageSize;
+			
 			// fetch particle data
-			ivec2 particlePos = ivec2(mod(inVertexID, uParticlePageWidth), inVertexID / uParticlePageWidth);
-			vec4 particleData = texture2D(uTexParticleData, particlePos);
+			vec4 particleData = texture2D(uTexParticleData, particleDataPos);
+			
+			// calc color
+			//vMomentumColor = vec4(0.2 + clamp(abs(particleData.z) / 1.0, 0.0, 0.8), 0.2 + clamp(abs(particleData.w) / 1.0, 0.0, 0.8), 0.5, uParticleColor.a);
+			vMomentumColor = vec4(0.5 + clamp(particleData.z / 1.0, -0.5, 0.5), 0.5 + clamp(particleData.w / 1.0, -0.5, 0.5), 0.5, uParticleColor.a);
+			//vMomentumColor = vec4(mix(vec3(0.1), vec3(1.0, 0.0, 0.0), clamp(length(particleData.zw) / 5.0, 0.0, 1.0)), uParticleColor.a);
 			
 			gl_Position = uMatMVP * vec4(particleData.xy, 0.0, 1.0);
+			//gl_Position = vec4(mat3(uMatMVP) * vec3(particleData.xy, 0.0), 1.0);
 		}
 	</script>
 	<script id="shader-particle-draw-frag" type="shader/glsl-frag">
+		precision highp float;
+		
 		uniform vec4 uParticleColor;
 		
+		varying vec4 vMomentumColor;
+		
 		void main() {
-			gl_FragColor = uParticleColor;
+			//gl_FragColor = uParticleColor;
+			gl_FragColor = vMomentumColor;
 		}
 	</script>
 	
 	<script id="shader-particle-compute-vert" type="shader/glsl-vert">
+		precision highp float;
+		
+		uniform vec2 uParticlePageSize;
+		
 		attribute vec2 inVertex;
 		
+		varying vec2 vTEMPDataPos;
+		
 		void main() {
+			//vTEMPDataPos = (inVertex * 0.5) + 0.5;
+			
 			gl_Position = vec4(inVertex, 0.0, 1.0);
 		}
 	</script>
 	<script id="shader-particle-compute-frag" type="shader/glsl-frag">
+		precision highp float;
+		
 		uniform sampler2D uTexParticleData;
 		
+		uniform vec2 uParticlePageSize;
+		
+		struct GravitySource {
+			vec2 pos;
+			float strength;
+		};
+		const int MAX_GRAVITY_SOURCES = 16;
+		uniform GravitySource uGravitySources[MAX_GRAVITY_SOURCES];
+		uniform float uParticleMass;
+		
+		varying vec2 vTEMPDataPos;
+		
 		void main() {
-			ivec2 particlePos = gl_FragCoord.xy;
+			// calc data page pos
+			vec2 particlePos = gl_FragCoord.xy / uParticlePageSize;
+			//vec2 particlePos = vTEMPDataPos;
 			
 			// fetch particle data
 			vec4 particleData = texture2D(uTexParticleData, particlePos);
 			
-			// process
-			particleData.y += (50.0 / 144.0);
+			// compute
+			vec2 gravityPull = vec2(0.0);
+			
+			for(int i = 0; i < MAX_GRAVITY_SOURCES; i++) {
+				GravitySource gs = uGravitySources[i];
+				
+				vec2 gravityCenter = gs.pos;
+				gravityPull += normalize(gravityCenter - particleData.xy) * min(1000.0, gs.strength * (uParticleMass / (max(1.0, pow(distance(particleData.xy, gravityCenter), 1.05)))));
+			}
+			particleData.zw += gravityPull;
+			
+			// apply drag
+			//particleData.zw *= 0.999;
+			
+			// apply momentum
+			particleData.xy += particleData.zw;
+			
+			//vec2 gravityPull = normalize(uGravityPoint - particleData.xy) * uGravityStrength * (uParticleMass / pow(distance(particleData.xy, uGravityPoint), 2.0));
+			//particleData.xy += clamp(gravityPull, vec2(-10.0), vec2(10.0));
+			
+			/*
+			// NOT WORKING
+			// increase entropy: slightly move towards quantization lines
+			vec2 quantizationGridSize = vec2(128.0);
+			vec2 quantizationPoint = floor((particleData.xy - (quantizationGridSize/2.0)) / quantizationGridSize) * quantizationGridSize;
+			particleData.zw += (particleData.zw - quantizationPoint) * 0.0001;
+			*/
+			
+			/*
+			particleData.zw += vec2(1.0, 0.0) * 0.01 * (dot(normalize(particleData.zw), vec2(-1.0, 0.0))*0.5+0.5);
+			particleData.zw += vec2(1.0, 0.0) * 0.005 * (dot(normalize(particleData.zw), vec2(0.0, -1.0))*0.5+0.5);
+			*/
+			
+			// collision
+			if(particleData.y < 0.0 && dot(normalize(particleData.zw), vec2(0.0, -1.0)) > 0.0) {
+				particleData.zw = reflect(particleData.zw, vec2(0.0, 1.0)) * 0.9;
+			}
+			if(particleData.y > 1024.0 && dot(normalize(particleData.zw), vec2(0.0, 1.0)) > 0.0) {
+				particleData.zw = reflect(particleData.zw, vec2(0.0, -1.0)) * 0.9;
+			}
+			if(particleData.x < 0.0 && dot(normalize(particleData.zw), vec2(-1.0, 0.0)) > 0.0) {
+				particleData.zw = reflect(particleData.zw, vec2(1.0, 0.0)) * 0.9;
+			}
+			if(particleData.x > 1024.0 && dot(normalize(particleData.zw), vec2(1.0, 0.0)) > 0.0) {
+				particleData.zw = reflect(particleData.zw, vec2(-1.0, 0.0)) * 0.9;
+			}
 			
 			// write new particle data
-			gl_FragColor = particleData;
+			gl_FragData[0] = particleData;
 		}
 	</script>
 </head>
