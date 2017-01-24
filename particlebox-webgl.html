@@ -49,8 +49,11 @@
 			
 			// calc color
 			//vMomentumColor = vec4(0.2 + clamp(abs(particleData.z) / 1.0, 0.0, 0.8), 0.2 + clamp(abs(particleData.w) / 1.0, 0.0, 0.8), 0.5, uParticleColor.a);
-			vMomentumColor = vec4(0.5 + clamp(particleData.z / 1.0, -0.5, 0.5), 0.5 + clamp(particleData.w / 1.0, -0.5, 0.5), 0.5, uParticleColor.a);
+			//vMomentumColor = vec4(0.5 + clamp(particleData.z / 1.0, -0.5, 0.5), 0.5 + clamp(particleData.w / 1.0, -0.5, 0.5), 0.5, uParticleColor.a);
 			//vMomentumColor = vec4(mix(vec3(0.1), vec3(1.0, 0.0, 0.0), clamp(length(particleData.zw) / 5.0, 0.0, 1.0)), uParticleColor.a);
+			
+			vMomentumColor = uParticleColor;
+			vMomentumColor.a = clamp(length(particleData.zw) / 10.0, 0.05, 0.3);
 			
 			gl_Position = uMatMVP * vec4(particleData.xy, 0.0, 1.0);
 			//gl_Position = vec4(mat3(uMatMVP) * vec3(particleData.xy, 0.0), 1.0);
@@ -101,6 +104,11 @@
 		
 		varying vec2 vTEMPDataPos;
 		
+		vec3 mod289(vec3 x);
+		vec2 mod289(vec2 x);
+		vec3 permute(vec3 x);
+		float snoise(vec2 v);
+		
 		void main() {
 			// calc data page pos
 			vec2 particlePos = gl_FragCoord.xy / uParticlePageSize;
@@ -112,28 +120,25 @@
 			// compute
 			vec2 gravityPull = vec2(0.0);
 			
+			// sum gravity
 			for(int i = 0; i < MAX_GRAVITY_SOURCES; i++) {
 				GravitySource gs = uGravitySources[i];
 				
 				vec2 gravityCenter = gs.pos;
-				gravityPull += normalize(gravityCenter - particleData.xy) * min(1000.0, gs.strength * (uParticleMass / (max(1.0, pow(distance(particleData.xy, gravityCenter), 1.05)))));
+				gravityPull += normalize(gravityCenter - particleData.xy) * min(10000.0, gs.strength * (uParticleMass / (max(0.01, pow(distance(particleData.xy, gravityCenter), 1.05)))));
 			}
 			particleData.zw += gravityPull;
 			
 			// apply drag
 			//particleData.zw *= 0.999;
 			
-			// apply momentum
-			particleData.xy += particleData.zw;
-			
-			//vec2 gravityPull = normalize(uGravityPoint - particleData.xy) * uGravityStrength * (uParticleMass / pow(distance(particleData.xy, uGravityPoint), 2.0));
-			//particleData.xy += clamp(gravityPull, vec2(-10.0), vec2(10.0));
+			// noise
+			//particleData.zw += snoise(particleData.xy / 100.0) * 0.001;
 			
 			/*
-			// NOT WORKING
 			// increase entropy: slightly move towards quantization lines
 			vec2 quantizationGridSize = vec2(128.0);
-			vec2 quantizationPoint = floor((particleData.xy - (quantizationGridSize/2.0)) / quantizationGridSize) * quantizationGridSize;
+			vec2 quantizationPoint = floor((particleData.xy + (quantizationGridSize/2.0)) / quantizationGridSize) * quantizationGridSize;
 			particleData.zw += (particleData.zw - quantizationPoint) * 0.0001;
 			*/
 			
@@ -142,6 +147,10 @@
 			particleData.zw += vec2(1.0, 0.0) * 0.005 * (dot(normalize(particleData.zw), vec2(0.0, -1.0))*0.5+0.5);
 			*/
 			
+			// apply momentum
+			particleData.xy += particleData.zw;
+			
+			/*
 			// collision
 			if(particleData.y < 0.0 && dot(normalize(particleData.zw), vec2(0.0, -1.0)) > 0.0) {
 				particleData.zw = reflect(particleData.zw, vec2(0.0, 1.0)) * 0.9;
@@ -155,10 +164,72 @@
 			if(particleData.x > 1024.0 && dot(normalize(particleData.zw), vec2(1.0, 0.0)) > 0.0) {
 				particleData.zw = reflect(particleData.zw, vec2(-1.0, 0.0)) * 0.9;
 			}
+			*/
 			
 			// write new particle data
 			gl_FragData[0] = particleData;
 		}
+		
+		// Simplex noise
+		vec3 mod289(vec3 x) {
+			return x - floor(x * (1.0 / 289.0)) * 289.0;
+		}
+		
+		vec2 mod289(vec2 x) {
+			return x - floor(x * (1.0 / 289.0)) * 289.0;
+		}
+		
+		vec3 permute(vec3 x) {
+			return mod289(((x*34.0)+1.0)*x);
+		}
+		
+		float snoise(vec2 v) {
+			const vec4 C = vec4(0.211324865405187,  // (3.0-sqrt(3.0))/6.0
+						  0.366025403784439,  // 0.5*(sqrt(3.0)-1.0)
+						 -0.577350269189626,  // -1.0 + 2.0 * C.x
+						  0.024390243902439); // 1.0 / 41.0
+			// First corner
+			vec2 i  = floor(v + dot(v, C.yy) );
+			vec2 x0 = v -   i + dot(i, C.xx);
+
+			// Other corners
+			vec2 i1;
+			//i1.x = step( x0.y, x0.x ); // x0.x > x0.y ? 1.0 : 0.0
+			//i1.y = 1.0 - i1.x;
+			i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+			// x0 = x0 - 0.0 + 0.0 * C.xx ;
+			// x1 = x0 - i1 + 1.0 * C.xx ;
+			// x2 = x0 - 1.0 + 2.0 * C.xx ;
+			vec4 x12 = x0.xyxy + C.xxzz;
+			x12.xy -= i1;
+
+			// Permutations
+			i = mod289(i); // Avoid truncation effects in permutation
+			vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 ))
+			+ i.x + vec3(0.0, i1.x, 1.0 ));
+
+			vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
+			m = m*m ;
+			m = m*m ;
+
+			// Gradients: 41 points uniformly over a line, mapped onto a diamond.
+			// The ring size 17*17 = 289 is close to a multiple of 41 (41*7 = 287)
+
+			vec3 x = 2.0 * fract(p * C.www) - 1.0;
+			vec3 h = abs(x) - 0.5;
+			vec3 ox = floor(x + 0.5);
+			vec3 a0 = x - ox;
+
+			// Normalise gradients implicitly by scaling m
+			// Approximation of: m *= inversesqrt( a0*a0 + h*h );
+			m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );
+
+			// Compute final noise value at P
+			vec3 g;
+			g.x  = a0.x  * x0.x  + h.x  * x0.y;
+			g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+		return 130.0 * dot(m, g);
+	}
 	</script>
 </head>
 
