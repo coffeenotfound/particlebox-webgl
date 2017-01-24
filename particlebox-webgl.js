@@ -139,7 +139,7 @@ Particlebox.prototype = {
 			gl.useProgram(this.shaderParticleDraw);
 			
 			// update uniforms
-			gl.uniform1f(this.shaderParticleDraw.uParticleSize, 1.0);
+			gl.uniform1f(this.shaderParticleDraw.uParticleSize, 1.5);
 			gl.uniform4f(this.shaderParticleDraw.uParticleColor, 0.96, 0.20, 0.20, 0.1);
 			
 			gl.uniform2f(this.shaderParticleDraw.uParticlePageSize, universe.particleBuffer.page.pageWidth, universe.particleBuffer.page.pageHeight);
@@ -194,13 +194,13 @@ Particlebox.Universe = function(gl) {
 	// generate random gravity sources
 	for(var i = 0; i < this.MAX_GRAVITY_SOURCES; i++) {
 		//var gs = new Particlebox.GravitySource(Math.random()*1024, Math.random()*1024, (Math.random()*400)+100);
-		var gs = new Particlebox.GravitySource(Math.random()*1024, Math.random()*1024, 100.0);
+		var gs = new Particlebox.GravitySource(Math.random()*1024, Math.random()*1024, 0.0);
 		this.gravitySources[i] = gs;
 	}
 	
 	// set mouse gravity source
 	this.mouseGravitySource = this.gravitySources[0];
-	this.mouseGravitySource.strength = 1000;
+	this.mouseGravitySource.strength = 2000.0;
 	//this.mouseGravitySource.strength = 0;
 };
 Particlebox.Universe.prototype = {
@@ -213,7 +213,7 @@ Particlebox.Universe.prototype = {
 	gravitySources: [],
 	particleMass: 0.001,
 	
-	_particleNum: 16384 * 64,
+	_particleNum: 16384 * 32,
 	//_particleNum: 4096,
 	
 	setParticleNum: function(particleNum) {
@@ -309,8 +309,11 @@ Particlebox.ParticleBuffer.DataPage.prototype = {
 			//initialParticleData[i + 1] = Math.random()*this.particleBuffer.gl.canvas.height;
 			initialParticleData[i + 0] = ((randn_bm()+4.0)*0.125)*this.particleBuffer.gl.canvas.width;
 			initialParticleData[i + 1] = ((randn_bm()+4.0)*0.125)*this.particleBuffer.gl.canvas.height;
-			initialParticleData[i + 2] = weml.rand(-1.0, 1.0);
-			initialParticleData[i + 3] = weml.rand(-1.0, 1.0);
+			
+			//initialParticleData[i + 2] = 0;
+			//initialParticleData[i + 3] = 0;
+			//initialParticleData[i + 2] = (Math.random()*2)-1;
+			//initialParticleData[i + 3] = (Math.random()*2)-1;
 		}
 		
 		// create textures
