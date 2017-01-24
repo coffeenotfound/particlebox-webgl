@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title>Particlebox WebGL</title>
+	
+	<!-- css -->
+	<link href="normalize.css" rel="stylesheet">
+	<style>
+		html {
+			overflow: hidden;
+		}
+	</style>
+	
+	<!-- js -->
+	<script src="js/lib/jquery-3.1.1.min.js"></script>
+	<script src="js/lib/dat.gui.min.js"></script>
+	<script src="js/lib/stats.min.js"></script>
+	
+	<script src="../nebgl.js/nebgl.js"></script>
+	<script src="../weml.js/weml.js"></script>
+	<script src="particlebox-webgl.js"></script>
+	
+	<!-- shaders -->
+	<script id="shader-particle-draw-vert" type="shader/glsl-vert">
+		uniform sampler2D uTexParticleData;
+		
+		uniform mat4 uMatMVP;
+		uniform float uParticleSize;
+		uniform int uParticlePageWidth;
+		
+		attribute int inVertexID; // stupid webgl doesn't have gl_VertexID eventhough every gpu ever created supports it *sigh*
+		
+		void main() {
+			gl_PointSize = uParticleSize;
+			
+			// fetch particle data
+			ivec2 particlePos = ivec2(mod(inVertexID, uParticlePageWidth), inVertexID / uParticlePageWidth);
+			vec4 particleData = texture2D(uTexParticleData, particlePos);
+			
+			gl_Position = uMatMVP * vec4(particleData.xy, 0.0, 1.0);
+		}
+	</script>
+	<script id="shader-particle-draw-frag" type="shader/glsl-frag">
+		uniform vec4 uParticleColor;
+		
+		void main() {
+			gl_FragColor = uParticleColor;
+		}
+	</script>
+	
+	<script id="shader-particle-compute-vert" type="shader/glsl-vert">
+		attribute vec2 inVertex;
+		
+		void main() {
+			gl_Position = vec4(inVertex, 0.0, 1.0);
+		}
+	</script>
+	<script id="shader-particle-compute-frag" type="shader/glsl-frag">
+		uniform sampler2D uTexParticleData;
+		
+		void main() {
+			ivec2 particlePos = gl_FragCoord.xy;
+			
+			// fetch particle data
+			vec4 particleData = texture2D(uTexParticleData, particlePos);
+			
+			// process
+			particleData.y += (50.0 / 144.0);
+			
+			// write new particle data
+			gl_FragColor = particleData;
+		}
+	</script>
+</head>
+
+<body>
+	<canvas id="webglcanvas"></canvas>
+</body>
+</html>
