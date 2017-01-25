@@ -49,11 +49,11 @@
 			
 			// calc color
 			//vMomentumColor = vec4(0.2 + clamp(abs(particleData.z) / 1.0, 0.0, 0.8), 0.2 + clamp(abs(particleData.w) / 1.0, 0.0, 0.8), 0.5, uParticleColor.a);
-			//vMomentumColor = vec4(0.5 + clamp(particleData.z / 1.0, -0.5, 0.5), 0.5 + clamp(particleData.w / 1.0, -0.5, 0.5), 0.5, uParticleColor.a);
+			vMomentumColor = vec4(0.5 + clamp(particleData.z / 1.0, -0.5, 0.5), 0.5 + clamp(particleData.w / 1.0, -0.5, 0.5), 0.5, uParticleColor.a);
 			//vMomentumColor = vec4(mix(vec3(0.1), vec3(1.0, 0.0, 0.0), clamp(length(particleData.zw) / 5.0, 0.0, 1.0)), uParticleColor.a);
 			
-			vMomentumColor = uParticleColor;
-			vMomentumColor.a = clamp(length(particleData.zw) / 10.0, 0.05, 0.3);
+			//vMomentumColor = uParticleColor;
+			vMomentumColor.a = clamp(length(particleData.zw) / 10.0, 0.075, 0.2);
 			
 			gl_Position = uMatMVP * vec4(particleData.xy, 0.0, 1.0);
 			//gl_Position = vec4(mat3(uMatMVP) * vec3(particleData.xy, 0.0), 1.0);
@@ -93,6 +93,7 @@
 		uniform sampler2D uTexParticleData;
 		
 		uniform vec2 uParticlePageSize;
+		uniform float uParticleDragFactor;
 		
 		struct GravitySource {
 			vec2 pos;
@@ -125,12 +126,12 @@
 				GravitySource gs = uGravitySources[i];
 				
 				vec2 gravityCenter = gs.pos;
-				gravityPull += normalize(gravityCenter - particleData.xy) * min(10000.0, gs.strength * (uParticleMass / (max(0.01, pow(distance(particleData.xy, gravityCenter), 1.05)))));
+				gravityPull += normalize(gravityCenter - particleData.xy) * min(10000000.0, gs.strength * (uParticleMass / (max(0.01, pow(distance(particleData.xy, gravityCenter), 1.05)))));
 			}
 			particleData.zw += gravityPull;
 			
 			// apply drag
-			//particleData.zw *= 0.999;
+			particleData.zw *= uParticleDragFactor;
 			
 			// noise
 			//particleData.zw += snoise(particleData.xy / 100.0) * 0.001;

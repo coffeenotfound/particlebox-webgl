@@ -22,6 +22,8 @@ var Particlebox = function() {};
 Particlebox.prototype = {
 	gl: null,
 	
+	mouseButtonStates: new Array(3),
+	
 	universe: null,
 	
 	init: function() {
@@ -31,6 +33,58 @@ Particlebox.prototype = {
 		this.statsjs = new Stats();
 		this.statsjs.showPanel(0);
 		document.body.appendChild(this.statsjs.dom);
+		
+		{ // build dat.gui
+			this.datGUI = new dat.GUI();
+			this.datGUI.myvars = {};
+			var gui = this.datGUI;
+			gui.close();
+			
+			// folder: particles
+			var folderParticles = gui.addFolder('Particles');
+			folderParticles.open();
+			
+			// particleCount
+			gui.myvars.particleCount = 1048576;
+			folderParticles.add(gui.myvars, 'particleCount', [1, 4096, 16384, 262144, 1048576, 2097152, 268435456]);
+			
+			// particleFormation
+			gui.myvars.particleFormation = 'random';
+			folderParticles.add(gui.myvars, 'particleFormation', ['random', 'gaussian', 'uniform', 'circle', 'square']);
+			
+			// resetParticles
+			gui.myvars.resetParticles = function() {
+				alert('not implemented yet');
+			};
+			folderParticles.add(gui.myvars, 'resetParticles');
+			
+			// folder: simulation
+			var folderSimulation = gui.addFolder('Simulation');
+			folderSimulation.open();
+			
+			// mouseGravityStrength
+			gui.myvars.mouseGravityStrength = 3000.0;
+			gui.myvars.mouseLeftGravityStrength = 8000.0;
+			gui.myvars.mouseRightGravityStrength = -16000.0;
+			folderSimulation.add(gui.myvars, 'mouseGravityStrength').step(100);
+			folderSimulation.add(gui.myvars, 'mouseLeftGravityStrength').step(100);
+			folderSimulation.add(gui.myvars, 'mouseRightGravityStrength').step(100);
+			
+			gui.myvars.dragFactor = 0.995;
+			folderSimulation.add(gui.myvars, 'dragFactor').step(0.005).min(0.0).max(1.0);
+			
+			// folder: render
+			var folderRender = gui.addFolder('Render');
+			folderRender.open();
+			
+			// particleSize
+			gui.myvars.particleSize = 1.0;
+			folderRender.add(gui.myvars, 'particleSize').min(1).max(8).step(0.5);
+			
+			// particleColor
+			gui.myvars.particleColor = [255, 255, 255, 0.1];
+			folderRender.addColor(gui.myvars, 'particleColor');
+		}
 		
 		// create webgl context
 		this.gl = NebGL.createGLForId("webglcanvas", { fullwindow: true, depth: false, alpha: false, antialias: false });
@@ -62,8 +116,7 @@ Particlebox.prototype = {
 		this.shaderParticleCompute = NebGL.createProgramFromScripts(this.gl, "shader-particle-compute-vert", "shader-particle-compute-frag");
 		this.shaderParticleCompute.uParticlePageSize = this.gl.getUniformLocation(this.shaderParticleCompute, "uParticlePageSize");
 		this.shaderParticleCompute.uParticleMass = this.gl.getUniformLocation(this.shaderParticleCompute, "uParticleMass");
-		this.shaderParticleCompute.uGravityPoint = this.gl.getUniformLocation(this.shaderParticleCompute, "uGravityPoint");
-		this.shaderParticleCompute.uGravityStrength = this.gl.getUniformLocation(this.shaderParticleCompute, "uGravityStrength");
+		this.shaderParticleCompute.uParticleDragFactor = this.gl.getUniformLocation(this.shaderParticleCompute, "uParticleDragFactor");
 		
 		this.shaderParticleDraw = NebGL.createProgramFromScripts(this.gl, "shader-particle-draw-vert", "shader-particle-draw-frag");
 		this.shaderParticleDraw.uMatMVP = this.gl.getUniformLocation(this.shaderParticleDraw, "uMatMVP");
@@ -71,11 +124,30 @@ Particlebox.prototype = {
 		this.shaderParticleDraw.uParticleSize = this.gl.getUniformLocation(this.shaderParticleDraw, "uParticleSize");
 		this.shaderParticleDraw.uParticlePageSize = this.gl.getUniformLocation(this.shaderParticleDraw, "uParticlePageSize");
 		
-		// moouse move handler
+		// mouse move handler
 		this.gl.canvas.addEventListener('mousemove', function(e) {
 			self.universe.mouseGravitySource.posx = e.clientX;
 			self.universe.mouseGravitySource.posy = e.clientY;
 		}, false);
+		
+		// mouse button handler
+		this.gl.canvas.addEventListener('mousedown', function(e) {
+			var button = e.button;
+			if(button >= 0 && button <= 2) {
+				self.mouseButtonStates[button] = true;
+			}
+		}, false);
+		this.gl.canvas.addEventListener('mouseup', function(e) {
+			var button = e.button;
+			if(button >= 0 && button <= 2) {
+				self.mouseButtonStates[button] = false;
+			}
+		}, false);
+		
+		// prevent context menu
+		this.gl.canvas.oncontextmenu = function(e) {
+			e.preventDefault();
+		};
 	},
 	
 	frame: function() {
@@ -101,12 +173,23 @@ Particlebox.prototype = {
 		
 		var texIndexToCompute = this._tick % 2;
 		
+		// TODO: move this out of the draw method
+		// update values
+		universe.mouseGravitySource.strength = this.datGUI.myvars.mouseGravityStrength;
+		if(particlebox.mouseButtonStates[0]) {
+			universe.mouseGravitySource.strength = this.datGUI.myvars.mouseLeftGravityStrength;
+		}
+		else if(particlebox.mouseButtonStates[2]) {
+			universe.mouseGravitySource.strength = this.datGUI.myvars.mouseRightGravityStrength;
+		}
+		
 		{ // compute particles
 			var page = universe.particleBuffer.page;
 			
 			// bind shader
 			gl.useProgram(this.shaderParticleCompute);
 			
+			// update uniforms
 			gl.uniform2f(this.shaderParticleCompute.uParticlePageSize, universe.particleBuffer.page.pageWidth, universe.particleBuffer.page.pageHeight);
 			
 			for(var i = 0; i < universe.gravitySources.length; i++) {
@@ -115,7 +198,9 @@ Particlebox.prototype = {
 				gl.uniform2f(gl.getUniformLocation(this.shaderParticleCompute, "uGravitySources[" + i + "].pos"), gs.posx, gs.posy);
 				gl.uniform1f(gl.getUniformLocation(this.shaderParticleCompute, "uGravitySources[" + i + "].strength"), gs.strength);
 			}
+			
 			gl.uniform1f(this.shaderParticleCompute.uParticleMass, universe.particleMass);
+			gl.uniform1f(this.shaderParticleCompute.uParticleDragFactor, this.datGUI.myvars.dragFactor)
 			
 			// bind old source tex
 			gl.bindTexture(gl.TEXTURE_2D, (texIndexToCompute == 0 ? page.tex2 : page.tex1));
@@ -139,7 +224,7 @@ Particlebox.prototype = {
 			gl.useProgram(this.shaderParticleDraw);
 			
 			// update uniforms
-			gl.uniform1f(this.shaderParticleDraw.uParticleSize, 1.5);
+			gl.uniform1f(this.shaderParticleDraw.uParticleSize, 1.0);
 			gl.uniform4f(this.shaderParticleDraw.uParticleColor, 0.96, 0.20, 0.20, 0.1);
 			
 			gl.uniform2f(this.shaderParticleDraw.uParticlePageSize, universe.particleBuffer.page.pageWidth, universe.particleBuffer.page.pageHeight);
@@ -200,8 +285,6 @@ Particlebox.Universe = function(gl) {
 	
 	// set mouse gravity source
 	this.mouseGravitySource = this.gravitySources[0];
-	this.mouseGravitySource.strength = 2000.0;
-	//this.mouseGravitySource.strength = 0;
 };
 Particlebox.Universe.prototype = {
 	gl: null,
