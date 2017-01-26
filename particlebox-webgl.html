@@ -126,7 +126,7 @@
 				GravitySource gs = uGravitySources[i];
 				
 				vec2 gravityCenter = gs.pos;
-				gravityPull += normalize(gravityCenter - particleData.xy) * min(10000000.0, gs.strength * (uParticleMass / (max(0.01, pow(distance(particleData.xy, gravityCenter), 1.05)))));
+				gravityPull += normalize(gravityCenter - particleData.xy) * min(100.0, gs.strength * (uParticleMass / (max(0.01, pow(distance(particleData.xy, gravityCenter), 1.05)))));
 			}
 			particleData.zw += gravityPull;
 			
