@@ -130,6 +130,16 @@ Particlebox.prototype = {
 			self.universe.mouseGravitySource.posy = e.clientY;
 		}, false);
 		
+		// touch move handler
+		this.gl.canvas.addEventListener("touchmove", function(e) {
+			if(e.touches && e.touches.length > 0) {
+				var touch = e.touches[0];
+				
+				self.universe.mouseGravitySource.posx = touch.clientX;
+				self.universe.mouseGravitySource.posy = touch.clientY;
+			}
+		}, false);
+		
 		// mouse button handler
 		this.gl.canvas.addEventListener('mousedown', function(e) {
 			var button = e.button;
