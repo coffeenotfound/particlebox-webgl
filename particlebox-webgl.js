@@ -246,7 +246,7 @@ Particlebox.prototype = {
 			
 			gl.uniform2f(this.shaderParticleDraw.uParticlePageSize, universe.particleBuffer.page.pageWidth, universe.particleBuffer.page.pageHeight);
 			
-			this.matrixMVP.identity().ortho(0, gl.canvas.width, gl.canvas.height, 0, 1, -1);
+			this.matrixMVP.setOrtho(0, gl.canvas.width, gl.canvas.height, 0, 1, -1);
 			gl.uniformMatrix4fv(this.shaderParticleDraw.uMatMVP, false, this.matrixMVP);
 			
 			// bind backbuffer and set viewport
