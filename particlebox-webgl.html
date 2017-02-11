@@ -95,6 +95,7 @@
 		
 		uniform vec2 uParticlePageSize;
 		uniform float uParticleDragFactor;
+		uniform float uDeltaTime;
 		
 		struct GravitySource {
 			vec2 pos;
@@ -129,7 +130,7 @@
 				vec2 gravityCenter = gs.pos;
 				gravityPull += normalize(gravityCenter - particleData.xy) * min(100.0, gs.strength * (uParticleMass / (max(0.01, pow(distance(particleData.xy, gravityCenter), 1.05)))));
 			}
-			particleData.zw += gravityPull;
+			particleData.zw += gravityPull * uDeltaTime;
 			
 			// apply drag
 			particleData.zw *= uParticleDragFactor;
@@ -150,7 +151,7 @@
 			*/
 			
 			// apply momentum
-			particleData.xy += particleData.zw;
+			particleData.xy += particleData.zw * uDeltaTime;
 			
 			/*
 			// collision

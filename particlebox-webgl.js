@@ -119,6 +119,7 @@ Particlebox.prototype = {
 		this.shaderParticleCompute.uParticlePageSize = this.gl.getUniformLocation(this.shaderParticleCompute, "uParticlePageSize");
 		this.shaderParticleCompute.uParticleMass = this.gl.getUniformLocation(this.shaderParticleCompute, "uParticleMass");
 		this.shaderParticleCompute.uParticleDragFactor = this.gl.getUniformLocation(this.shaderParticleCompute, "uParticleDragFactor");
+		this.shaderParticleCompute.uDeltaTime = this.gl.getUniformLocation(this.shaderParticleCompute, "uDeltaTime");
 		
 		this.shaderParticleDraw = NebGL.createProgramFromScripts(this.gl, "shader-particle-draw-vert", "shader-particle-draw-frag");
 		this.shaderParticleDraw.uMatMVP = this.gl.getUniformLocation(this.shaderParticleDraw, "uMatMVP");
@@ -171,6 +172,7 @@ Particlebox.prototype = {
 	},
 	
 	_tick: 0,
+	_lastDeltaTimeNow: 0,
 	vertexIDBuffer: null,
 	computeQuadBuffer: null,
 	
@@ -218,6 +220,13 @@ Particlebox.prototype = {
 			
 			gl.uniform1f(this.shaderParticleCompute.uParticleMass, universe.particleMass);
 			gl.uniform1f(this.shaderParticleCompute.uParticleDragFactor, this.datGUI.myvars.dragFactor)
+			
+			// calc deltatime
+			var deltanow = performance.now();
+			var deltatime = (this._lastDeltaTimeNow == 0 ? 1.0 : ((deltanow - this._lastDeltaTimeNow) / 10));
+			this._lastDeltaTimeNow = deltanow;
+			
+			gl.uniform1f(this.shaderParticleCompute.uDeltaTime, deltatime);
 			
 			// bind old source tex
 			gl.bindTexture(gl.TEXTURE_2D, (texIndexToCompute == 0 ? page.tex2 : page.tex1));
