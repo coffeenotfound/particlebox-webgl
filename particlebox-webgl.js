@@ -94,6 +94,8 @@ Particlebox.prototype = {
 		this.gl.OESTextureHalfFloat = this.gl.getExtension("OES_texture_half_float");
 		//this.gl.WEBGLColorBufferFloat = this.gl.getExtension("WEBGL_color_buffer_float"); // not supported till webgl2
 		
+		this.gl.getExtension("EXT_color_buffer_float");
+		
 		// create the particle universe
 		this.universe = new Particlebox.Universe(this.gl);
 		
@@ -182,6 +184,11 @@ Particlebox.prototype = {
 		var universe = this.universe;
 		
 		var texIndexToCompute = this._tick % 2;
+		
+		// setup state
+		gl.disable(gl.DEPTH_TEST);
+		gl.disable(gl.STENCIL_TEST);
+		gl.disable(gl.BLEND);
 		
 		// TODO: move this out of the draw method
 		// update values
@@ -415,6 +422,9 @@ Particlebox.ParticleBuffer.DataPage.prototype = {
 			this.tex2 = gl.createTexture();
 		}
 		
+		var internalFormat = gl.RGBA32F;
+		//var internalFormat = gl.RGBA8;
+		
 		// allocate textures
 		gl.bindTexture(gl.TEXTURE_2D, this.tex1);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -423,7 +433,7 @@ Particlebox.ParticleBuffer.DataPage.prototype = {
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 		//gl.texImage2D(gl.TEXTURE_2D, 0, gl.WEBGLColorBufferFloat.RGBA32F_EXT, this.pageWidth, this.pageHeight, 0, gl.RGBA, gl.FLOAT, initialParticleData);
 		//gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.pageWidth, this.pageHeight, 0, gl.RGBA, gl.OESTextureHalfFloat.HALF_FLOAT_OES, initialParticleData);
-		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.pageWidth, this.pageHeight, 0, gl.RGBA, gl.FLOAT, initialParticleData);
+		gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, this.pageWidth, this.pageHeight, 0, gl.RGBA, gl.FLOAT, initialParticleData);
 		
 		gl.bindTexture(gl.TEXTURE_2D, this.tex2);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -432,20 +442,20 @@ Particlebox.ParticleBuffer.DataPage.prototype = {
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 		//gl.texImage2D(gl.TEXTURE_2D, 0, gl.WEBGLColorBufferFloat.RGBA32F_EXT, this.pageWidth, this.pageHeight, 0, gl.RGBA, gl.FLOAT, initialParticleData);
 		//gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.pageWidth, this.pageHeight, 0, gl.RGBA, gl.OESTextureHalfFloat.HALF_FLOAT_OES, initialParticleData);
-		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.pageWidth, this.pageHeight, 0, gl.RGBA, gl.FLOAT, initialParticleData);
+		gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, this.pageWidth, this.pageHeight, 0, gl.RGBA, gl.FLOAT, initialParticleData);
 		
 		// create framebuffers
 		if(!this.texFBO1) {
 			this.texFBO1 = gl.createFramebuffer();
-			this.texFBO2 = gl.createFramebuffer();
-			
 			gl.bindFramebuffer(gl.FRAMEBUFFER, this.texFBO1);
 			gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.tex1, 0);
 			
+			this.texFBO2 = gl.createFramebuffer();
 			gl.bindFramebuffer(gl.FRAMEBUFFER, this.texFBO2);
 			gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.tex2, 0);
-			
-			gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 		}
+		
+		gl.bindTexture(gl.TEXTURE_2D, null);
+		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 	},
 };
