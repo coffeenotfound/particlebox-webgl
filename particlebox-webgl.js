@@ -63,9 +63,9 @@ Particlebox.prototype = {
 			folderSimulation.open();
 			
 			// mouseGravityStrength
-			gui.myvars.mouseGravityStrength = 3000.0;
-			gui.myvars.mouseLeftGravityStrength = 8000.0;
-			gui.myvars.mouseRightGravityStrength = -16000.0;
+			gui.myvars.mouseGravityStrength = 10000.0;
+			gui.myvars.mouseLeftGravityStrength = 20000.0;
+			gui.myvars.mouseRightGravityStrength = -15000.0;
 			folderSimulation.add(gui.myvars, 'mouseGravityStrength').step(100);
 			folderSimulation.add(gui.myvars, 'mouseLeftGravityStrength').step(100);
 			folderSimulation.add(gui.myvars, 'mouseRightGravityStrength').step(100);
