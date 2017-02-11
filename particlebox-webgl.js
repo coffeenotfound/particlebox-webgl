@@ -390,9 +390,7 @@ Particlebox.ParticleBuffer.DataPage.prototype = {
 		
 		// calc size
 		this.pageWidth = this.particleBuffer.MAX_TEXTURE_SIZE;
-		//this.pageHeight = Math.ceil(this.particleNum / this.pageWidth);
 		this.pageHeight = Math.max(1, Math.pow(2, Math.ceil(Math.log2(this.particleNum / this.pageWidth))));
-		//this.pageHeight = 1;
 		
 		var gl = this.particleBuffer.gl;
 		
