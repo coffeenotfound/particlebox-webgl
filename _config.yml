@@ -1,5 +1,5 @@
 name: "ParticleBox WebGL"
-baseurl: "/"
+baseurl: ""
 encoding: "utf-8"
 source: "."
 
