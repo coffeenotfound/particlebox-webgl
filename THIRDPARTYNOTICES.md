@@ -3,7 +3,7 @@
 
 The MIT License (MIT)
 
-Copyright © Nicolas Gallagher and Jonathan Neal
+Copyright Â© Nicolas Gallagher and Jonathan Neal
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
