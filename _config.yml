@@ -3,4 +3,4 @@ baseurl: "/"
 encoding: "utf-8"
 source: "."
 
-include: ["particlebox-webgl.html"]
+include: ["index.html"]
