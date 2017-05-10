@@ -2,3 +2,5 @@ name: "ParticleBox WebGL"
 baseurl: "/"
 encoding: "utf-8"
 source: "."
+
+include: ["particlebox-webgl.html"]
