@@ -1,5 +1,7 @@
 # ParticleBox WebGL
 
+Test out [here](https://bitangent.net/particlebox-webgl/).
+
 Little WebGL particle sandbox with fully gpu computed dynamic particles that easily pushes more than a million particles a frame.
 
 It works by having particles stored as packed pixels in float textures. Each tick the textures are ping-pong'ed through a fragment shader that calculates the new positions.
